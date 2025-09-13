@@ -1,0 +1,307 @@
+'use client'
+
+import { motion } from 'framer-motion'
+import { 
+  LineChart, 
+  Line, 
+  AreaChart, 
+  Area, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts'
+import DatePicker from 'react-datepicker'
+import "react-datepicker/dist/react-datepicker.css"
+import { useState } from 'react'
+
+interface ChartData {
+  date: string
+  count: number
+  revenue: number
+}
+
+interface TabbedChartsProps {
+  data: ChartData[]
+  startDate: Date
+  setStartDate: (date: Date) => void
+  endDate: Date
+  setEndDate: (date: Date) => void
+  isLoading: boolean
+  animationVariants?: any
+}
+
+type ChartType = 'orders' | 'revenue' | 'distribution'
+
+export default function TabbedCharts({
+  data,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate,
+  isLoading,
+  animationVariants,
+}: TabbedChartsProps) {
+  const [activeTab, setActiveTab] = useState<ChartType>('orders')
+
+  const SkeletonLoader = () => (
+    <div className="w-full h-80 bg-obsidian-border rounded-lg animate-pulse"></div>
+  )
+
+  const tabs = [
+    { id: 'orders' as ChartType, label: 'Orders Over Time', icon: '📈' },
+    { id: 'revenue' as ChartType, label: 'Revenue Over Time', icon: '💰' },
+    { id: 'distribution' as ChartType, label: 'Orders Distribution', icon: '📊' }
+  ]
+
+  const renderChart = () => {
+    if (isLoading) {
+      return <SkeletonLoader />
+    }
+
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-obsidian-border rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <p className="text-muted-foreground">No data found for the selected date range</p>
+          </div>
+        </div>
+      )
+    }
+
+    const commonProps = {
+      data,
+      margin: { top: 5, right: 20, left: -10, bottom: 5 }
+    }
+
+    switch (activeTab) {
+      case 'orders':
+        return (
+          <ResponsiveContainer>
+            <LineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2D3142" />
+              <XAxis 
+                dataKey="date" 
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                }}
+              />
+              <YAxis 
+                allowDecimals={false} 
+                stroke="#9CA3AF"
+                fontSize={12}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1A1D29',
+                  border: '1px solid #2D3142',
+                  borderRadius: '0.5rem',
+                  fontSize: '14px',
+                  color: '#E8EAED',
+                }}
+                labelFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString('en-US', { 
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke="#3B82F6"
+                strokeWidth={3}
+                name="Orders"
+                dot={{ r: 4, fill: '#3B82F6' }}
+                activeDot={{ r: 6, fill: '#3B82F6' }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )
+
+      case 'revenue':
+        return (
+          <ResponsiveContainer>
+            <AreaChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2D3142" />
+              <XAxis 
+                dataKey="date" 
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                }}
+              />
+              <YAxis 
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickFormatter={(value) => `$${value.toLocaleString()}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1A1D29',
+                  border: '1px solid #2D3142',
+                  borderRadius: '0.5rem',
+                  fontSize: '14px',
+                  color: '#E8EAED',
+                }}
+                labelFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString('en-US', { 
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })
+                }}
+                formatter={(value: any) => [`$${value.toLocaleString()}`, 'Revenue']}
+              />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#8B5CF6"
+                fill="#8B5CF6"
+                fillOpacity={0.3}
+                name="Revenue"
+                strokeWidth={3}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )
+
+      case 'distribution':
+        return (
+          <ResponsiveContainer>
+            <BarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2D3142" />
+              <XAxis 
+                dataKey="date" 
+                stroke="#9CA3AF"
+                fontSize={12}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                }}
+              />
+              <YAxis 
+                allowDecimals={false} 
+                stroke="#9CA3AF"
+                fontSize={12}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1A1D29',
+                  border: '1px solid #2D3142',
+                  borderRadius: '0.5rem',
+                  fontSize: '14px',
+                  color: '#E8EAED',
+                }}
+                labelFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString('en-US', { 
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })
+                }}
+              />
+              <Legend />
+              <Bar
+                dataKey="count"
+                fill="#60A5FA"
+                name="Orders"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        )
+
+      default:
+        return null
+    }
+  }
+
+  return (
+    <motion.div
+      variants={animationVariants}
+      className="p-6 glass-card rounded-2xl shadow-xl border border-obsidian-border/50"
+    >
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <h3 className="text-xl font-bold text-foreground">Analytics Dashboard</h3>
+        <div className="flex items-center gap-2 text-sm sm:gap-4">
+          <div>
+            <span className="mr-2 text-muted-foreground">From:</span>
+            <DatePicker
+              selected={startDate}
+              onChange={(date) => date && setStartDate(date)}
+              selectsStart
+              startDate={startDate}
+              endDate={endDate}
+              className="w-32 p-2 border border-obsidian-border rounded-lg focus:outline-none focus:ring-2 focus:ring-obsidian-accent focus:border-obsidian-accent bg-obsidian-card text-foreground"
+              dateFormat="yyyy-MM-dd"
+            />
+          </div>
+          <div>
+            <span className="mr-2 text-muted-foreground">To:</span>
+            <DatePicker
+              selected={endDate}
+              onChange={(date) => date && setEndDate(date)}
+              selectsEnd
+              startDate={startDate}
+              endDate={endDate}
+              minDate={startDate}
+              className="w-32 p-2 border border-obsidian-border rounded-lg focus:outline-none focus:ring-2 focus:ring-obsidian-accent focus:border-obsidian-accent bg-obsidian-card text-foreground"
+              dateFormat="yyyy-MM-dd"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="mt-6">
+        <div className="border-b border-obsidian-border">
+          <nav className="-mb-px flex space-x-8">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  activeTab === tab.id
+                    ? 'border-obsidian-accent text-obsidian-accent'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-obsidian-border'
+                }`}
+              >
+                <span className="mr-2">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      {/* Chart Content */}
+      <div className="mt-6" style={{ width: '100%', height: 300 }}>
+        {renderChart()}
+      </div>
+    </motion.div>
+  )
+}

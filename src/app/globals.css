@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Obsidian Black Color Scheme */
+  --background: #0B0E14;
+  --foreground: #E8EAED;
+  --card: #1A1D29;
+  --card-foreground: #E8EAED;
+  --popover: #1A1D29;
+  --popover-foreground: #E8EAED;
+  --primary: #6366F1;
+  --primary-foreground: #FFFFFF;
+  --secondary: #2D3142;
+  --secondary-foreground: #E8EAED;
+  --muted: #2D3142;
+  --muted-foreground: #9CA3AF;
+  --accent: #2D3142;
+  --accent-foreground: #E8EAED;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #2D3142;
+  --input: #2D3142;
+  --ring: #6366F1;
+  --radius: 0.5rem;
+  
+  /* Custom obsidian colors */
+  --obsidian-dark: #0B0E14;
+  --obsidian-darker: #070A0F;
+  --obsidian-card: #1A1D29;
+  --obsidian-border: #2D3142;
+  --obsidian-muted: #4A5568;
+  --obsidian-accent: #3B82F6;
+  --obsidian-accent-light: #60A5FA;
+  --obsidian-purple: #8B5CF6;
+  --obsidian-purple-light: #A78BFA;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--obsidian-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--obsidian-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--obsidian-muted);
+}
+
+/* Glassmorphism effects for dark theme */
+.glass-dark {
+  background: rgba(26, 29, 41, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(45, 49, 66, 0.3);
+}
+
+.glass-card {
+  background: rgba(26, 29, 41, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(45, 49, 66, 0.4);
 }
