@@ -1,12 +1,21 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install",
   "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
+  "outputDirectory": ".next",
   "functions": {
-    "src/app/api/**/*.ts": {
+    "src/app/api/ingestion/start/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/insights/**/*.ts": {
       "maxDuration": 30
+    },
+    "src/app/api/customers/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/**/*.ts": {
+      "maxDuration": 15
     }
   },
   "headers": [
@@ -19,19 +28,47 @@
         },
         {
           "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
+          "value": "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
         }
       ]
-    }
-  ],
-  "rewrites": [
+    },
     {
-      "source": "/dashboard",
-      "destination": "/dashboard"
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ],
   "redirects": [
@@ -41,12 +78,26 @@
       "permanent": false
     }
   ],
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/env-check"
+    }
+  ],
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/ingestion/start",
+      "schedule": "0 2 * * *"
+    }
+  ],
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "@supabase-url",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase-anon-key",
     "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key",
     "SHOPIFY_STORE_URL": "@shopify-store-url",
-    "SHOPIFY_ACCESS_TOKEN": "@shopify-access-token"
+    "SHOPIFY_ACCESS_TOKEN": "@shopify-access-token",
+    "NODE_ENV": "production"
   },
   "build": {
     "env": {
@@ -54,7 +105,10 @@
       "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase-anon-key",
       "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key",
       "SHOPIFY_STORE_URL": "@shopify-store-url",
-      "SHOPIFY_ACCESS_TOKEN": "@shopify-access-token"
+      "SHOPIFY_ACCESS_TOKEN": "@shopify-access-token",
+      "NODE_ENV": "production"
     }
-  }
+  },
+  "cleanUrls": true,
+  "trailingSlash": false
 }
