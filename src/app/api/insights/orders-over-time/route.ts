@@ -9,6 +9,13 @@ export async function GET(request: NextRequest) {
       throw new Error('Admin client not available')
     }
 
+    // Get system user ID for filtering webhook data
+    const { data: systemUser } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single()
+
     const { searchParams } = new URL(request.url)
     const startDateQuery = searchParams.get('startDate')
     const endDateQuery = searchParams.get('endDate')
@@ -32,10 +39,11 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetching orders for date range:', { startDate, endDate })
 
-    // First try to get orders data from Supabase using processed_at field
+    // First try to get orders data from Supabase using processed_at field filtered by system user
     const { data: ordersData, error: dbError } = await supabaseAdmin
       .from('shopify_orders')
       .select('processed_at, total_price')
+      .eq('user_id', systemUser?.id)
       .gte('processed_at', startDate)
       .lte('processed_at', endDate)
       .order('processed_at')
@@ -103,7 +111,13 @@ export async function GET(request: NextRequest) {
 
     console.log('Formatted chart data:', formattedData)
 
-    return NextResponse.json(formattedData)
+    return NextResponse.json(formattedData, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
 
   } catch (error: unknown) {
     console.error('Error fetching orders over time:', error)

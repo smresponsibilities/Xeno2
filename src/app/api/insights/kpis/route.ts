@@ -9,10 +9,18 @@ export async function GET(request: NextRequest) {
       throw new Error('Admin client not available')
     }
 
-    // First try to get data from Supabase (cached/processed data)
+    // Get system user ID for filtering webhook data
+    const { data: systemUser } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single()
+
+    // First try to get data from Supabase (cached/processed data) filtered by system user
     const { data: revenueData } = await supabaseAdmin
       .from('shopify_orders')
       .select('total_price')
+      .eq('user_id', systemUser?.id)
 
     // If no data in Supabase, fetch directly from Shopify
     if (!revenueData || revenueData.length === 0) {
@@ -35,21 +43,29 @@ export async function GET(request: NextRequest) {
         totalCustomers: totalCustomers,
         averageOrderValue: Math.round(averageOrderValue * 100) / 100,
         source: 'shopify-api'
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       })
     }
 
     // Use Supabase data if available
     const totalRevenue = revenueData?.reduce((sum: number, order: any) => sum + (parseFloat(order.total_price) || 0), 0) || 0
 
-    // Get total orders count
+    // Get total orders count filtered by system user
     const { count: totalOrders } = await supabaseAdmin
       .from('shopify_orders')
       .select('*', { count: 'exact', head: true })
+      .eq('user_id', systemUser?.id)
 
-    // Get total customers count
+    // Get total customers count filtered by system user
     const { count: totalCustomers } = await supabaseAdmin
       .from('shopify_customers')
       .select('*', { count: 'exact', head: true })
+      .eq('user_id', systemUser?.id)
 
     // Calculate average order value
     const ordersCount = totalOrders || 0
@@ -61,6 +77,12 @@ export async function GET(request: NextRequest) {
       totalCustomers: totalCustomers || 0,
       averageOrderValue: Math.round(averageOrderValue * 100) / 100,
       source: 'database'
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     })
 
   } catch (error: any) {

@@ -57,7 +57,12 @@ export default function Dashboard() {
     date.setDate(date.getDate() - 30)
     return date
   })
-  const [endDate, setEndDate] = useState(new Date())
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date()
+    // Extend end date to include future dates to catch webhook data
+    date.setDate(date.getDate() + 30)
+    return date
+  })
 
   // Redirect if not authenticated (temporarily disabled for testing)
   useEffect(() => {
@@ -83,9 +88,18 @@ export default function Dashboard() {
       })
       
       const [kpisResponse, customersResponse, chartResponse] = await Promise.all([
-        fetch('/api/insights/kpis', { cache: 'no-store' }),
-        fetch('/api/insights/top-customers', { cache: 'no-store' }),
-        fetch(`/api/insights/orders-over-time?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, { cache: 'no-store' })
+        fetch('/api/insights/kpis', { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        }),
+        fetch('/api/insights/top-customers', { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        }),
+        fetch(`/api/insights/orders-over-time?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        })
       ])
 
       console.log('Response statuses:', {
@@ -181,14 +195,15 @@ export default function Dashboard() {
     }
   }, [startDate, endDate, loading, fetchData])
 
-  // Auto-refresh data every 30 seconds
+  // Auto-refresh data every 10 seconds to catch webhook updates quickly
   useEffect(() => {
     const interval = setInterval(() => {
       // For testing, always auto-refresh
       if (!isSyncing) {
+        console.log('Auto-refreshing dashboard data...')
         fetchData()
       }
-    }, 30000)
+    }, 10000) // Reduced from 30 seconds to 10 seconds
     
     return () => clearInterval(interval)
   }, [isSyncing, fetchData])
