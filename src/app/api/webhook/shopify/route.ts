@@ -78,6 +78,47 @@ async function handleOrderCreate(order: any) {
       console.error('Error saving order:', error);
     } else {
       console.log('Order saved to database successfully');
+      
+      // Update customer total_spent if customer exists
+      if (order.customer?.id) {
+        try {
+          // Calculate cumulative total from all orders for this customer
+          const { data: allOrders } = await supabase
+            .from('shopify_orders')
+            .select('total_price')
+            .eq('user_id', systemUserId)
+            .eq('shopify_customer_id', order.customer.id);
+
+          // Calculate total spent from all orders
+          const cumulativeTotal = allOrders?.reduce((sum, order) => {
+            const orderData = order as { total_price: string | null };
+            return sum + parseFloat(orderData.total_price || '0');
+          }, 0) || 0;
+
+          // Count total orders for this customer
+          const totalOrdersCount = (allOrders?.length || 0);
+
+          // Update customer with cumulative totals
+          await (supabase as any)
+            .from('shopify_customers')
+            .update({
+              total_spent: cumulativeTotal,
+              orders_count: totalOrdersCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', systemUserId)
+            .eq('shopify_customer_id', order.customer.id);
+
+          console.log('Updated customer with cumulative totals:', {
+            customerId: order.customer.id,
+            cumulativeTotal,
+            totalOrdersCount,
+            orderCount: allOrders?.length || 0
+          });
+        } catch (customerUpdateError) {
+          console.error('Error updating customer total_spent:', customerUpdateError);
+        }
+      }
     }
   } catch (error) {
     console.error('Error processing order creation:', error);
@@ -226,6 +267,47 @@ async function handleOrderUpdate(order: any) {
       console.error('Error updating order:', error);
     } else {
       console.log('Order updated in database');
+      
+      // Update customer total_spent if customer exists
+      if (order.customer?.id) {
+        try {
+          // Calculate cumulative total from all orders for this customer
+          const { data: allOrders } = await supabase
+            .from('shopify_orders')
+            .select('total_price')
+            .eq('user_id', systemUserId)
+            .eq('shopify_customer_id', order.customer.id);
+
+          // Calculate total spent from all orders
+          const cumulativeTotal = allOrders?.reduce((sum, order) => {
+            const orderData = order as { total_price: string | null };
+            return sum + parseFloat(orderData.total_price || '0');
+          }, 0) || 0;
+
+          // Count total orders for this customer
+          const totalOrdersCount = (allOrders?.length || 0);
+
+          // Update customer with cumulative totals
+          await (supabase as any)
+            .from('shopify_customers')
+            .update({
+              total_spent: cumulativeTotal,
+              orders_count: totalOrdersCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', systemUserId)
+            .eq('shopify_customer_id', order.customer.id);
+
+          console.log('Updated customer with cumulative totals after order update:', {
+            customerId: order.customer.id,
+            cumulativeTotal,
+            totalOrdersCount,
+            orderCount: allOrders?.length || 0
+          });
+        } catch (customerUpdateError) {
+          console.error('Error updating customer total_spent:', customerUpdateError);
+        }
+      }
     }
   } catch (error) {
     console.error('Error processing order update:', error);

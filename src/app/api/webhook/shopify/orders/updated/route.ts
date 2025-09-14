@@ -66,54 +66,42 @@ async function handleOrderUpdate(order: any) {
     } else {
       console.log('Order updated in database');
       
-      // Update customer total_spent if order total changed and customer exists
+      // Update customer total_spent if customer exists
       if (order.customer?.id) {
         try {
-          // Get the original order total from database
-          const { data: originalOrder } = await supabase
+          // Calculate cumulative total from all orders for this customer
+          const { data: allOrders } = await supabase
             .from('shopify_orders')
             .select('total_price')
             .eq('user_id', systemUserId)
-            .eq('shopify_order_id', order.id)
-            .single();
+            .eq('shopify_customer_id', order.customer.id);
 
-          if (originalOrder) {
-            const orderData = originalOrder as { total_price: string | null };
-            const originalTotal = parseFloat(orderData.total_price || '0');
-            const newTotal = parseFloat(order.total_price || '0');
-            const totalDifference = newTotal - originalTotal;
+          // Calculate total spent from all orders
+          const cumulativeTotal = allOrders?.reduce((sum, order) => {
+            const orderData = order as { total_price: string | null };
+            return sum + parseFloat(orderData.total_price || '0');
+          }, 0) || 0;
 
-            if (totalDifference !== 0) {
-              // Get current customer data
-              const { data: currentCustomer } = await supabase
-                .from('shopify_customers')
-                .select('total_spent')
-                .eq('user_id', systemUserId)
-                .eq('shopify_customer_id', order.customer.id)
-                .single();
+          // Count total orders for this customer
+          const totalOrdersCount = (allOrders?.length || 0);
 
-              if (currentCustomer) {
-                const customerData = currentCustomer as { total_spent: number | null };
-                const newCustomerTotal = (customerData.total_spent || 0) + totalDifference;
+          // Update customer with cumulative totals
+          await (supabase as any)
+            .from('shopify_customers')
+            .update({
+              total_spent: cumulativeTotal,
+              orders_count: totalOrdersCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', systemUserId)
+            .eq('shopify_customer_id', order.customer.id);
 
-                // Update customer total_spent
-                await (supabase as any)
-                  .from('shopify_customers')
-                  .update({
-                    total_spent: newCustomerTotal,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('user_id', systemUserId)
-                  .eq('shopify_customer_id', order.customer.id);
-
-                console.log('Updated customer total_spent due to order change:', {
-                  customerId: order.customer.id,
-                  totalDifference,
-                  newCustomerTotal
-                });
-              }
-            }
-          }
+          console.log('Updated customer with cumulative totals after order update:', {
+            customerId: order.customer.id,
+            cumulativeTotal,
+            totalOrdersCount,
+            orderCount: allOrders?.length || 0
+          });
         } catch (customerUpdateError) {
           console.error('Error updating customer total_spent:', customerUpdateError);
         }

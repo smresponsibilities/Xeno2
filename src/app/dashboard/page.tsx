@@ -194,10 +194,11 @@ export default function Dashboard() {
     }
   }, [startDate, endDate, loading, fetchData])
 
-  // Webhook-based refresh system
+  // Webhook-based refresh system using Server-Sent Events
   useEffect(() => {
     // Create a more intelligent refresh system
     let refreshTimeout: NodeJS.Timeout | null = null
+    let eventSource: EventSource | null = null
     
     const scheduleRefresh = () => {
       // Clear any existing timeout
@@ -214,36 +215,61 @@ export default function Dashboard() {
       }, 2000)
     }
     
-    // Listen for webhook refresh events (using a simple polling approach for now)
-    // In a real implementation, you might use WebSockets or Server-Sent Events
-    const checkForRefresh = async () => {
+    // Set up Server-Sent Events connection for real-time webhook notifications
+    const setupSSE = () => {
       try {
-        const response = await fetch('/api/refresh-dashboard', { 
-          method: 'GET',
-          cache: 'no-store'
-        })
-        if (response.ok) {
-          const data = await response.json()
-          
-          // Use the hasRecentRefresh flag from the API
-          if (data.hasRecentRefresh) {
-            console.log('Recent webhook detected, scheduling dashboard refresh...')
-            scheduleRefresh()
+        eventSource = new EventSource('/api/refresh-dashboard')
+        
+        eventSource.onopen = () => {
+          console.log('Connected to webhook notifications via SSE')
+        }
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            
+            if (data.type === 'refresh') {
+              console.log('Webhook refresh event received:', data.event)
+              scheduleRefresh()
+            } else if (data.type === 'connected') {
+              console.log('SSE connection established:', data.message)
+            } else if (data.type === 'heartbeat') {
+              // Heartbeat received, connection is alive
+              console.log('SSE heartbeat received')
+            }
+          } catch (error) {
+            console.error('Error parsing SSE message:', error)
           }
         }
+        
+        eventSource.onerror = (error) => {
+          console.error('SSE connection error:', error)
+          
+          // Attempt to reconnect after 5 seconds
+          setTimeout(() => {
+            if (eventSource?.readyState === EventSource.CLOSED) {
+              console.log('Attempting to reconnect SSE...')
+              setupSSE()
+            }
+          }, 5000)
+        }
+        
       } catch (error) {
-        console.error('Error checking for refresh:', error)
+        console.error('Error setting up SSE connection:', error)
       }
     }
     
-    // Check for refresh events every 3 seconds
-    const refreshInterval = setInterval(checkForRefresh, 3000)
+    // Initialize SSE connection
+    setupSSE()
     
     return () => {
       if (refreshTimeout) {
         clearTimeout(refreshTimeout)
       }
-      clearInterval(refreshInterval)
+      if (eventSource) {
+        eventSource.close()
+        console.log('SSE connection closed')
+      }
     }
   }, [isSyncing, fetchData])
 
