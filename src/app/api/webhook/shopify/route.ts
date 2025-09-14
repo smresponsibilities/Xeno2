@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
         await handleOrderFulfilled(payload);
         break;
       case 'orders/cancelled':
-        await handleOrderCancellation(payload);
+        await handleOrderCancelled(payload);
         break;
       case 'orders/updated':
         await handleOrderUpdate(payload);
