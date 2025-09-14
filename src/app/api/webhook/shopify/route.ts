@@ -38,7 +38,7 @@ async function handleOrderCreate(order: any) {
     }
     
     // Get store_id from the webhook (you might need to extract this from the webhook URL or headers)
-    const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
+    // const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
     // Get system user ID for webhook processing
     const { data: systemUser, error: userError } = await supabase
@@ -250,7 +250,7 @@ async function handleCustomerCreate(customer: any) {
       console.error('Supabase admin client not available');
       return;
     }
-    const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
+    // const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
     // Get system user ID for webhook processing
     const { data: systemUser, error: userError } = await supabase
@@ -364,7 +364,7 @@ async function handleProductCreate(product: any) {
       console.error('Supabase admin client not available');
       return;
     }
-    const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
+    // const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
     // Get system user ID for webhook processing
     const { data: systemUser, error: userError } = await supabase
@@ -551,6 +551,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Event not handled' }, { status: 200 });
     }
 
+    // Trigger dashboard refresh for all webhook events
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/refresh-dashboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event,
+          data: { processed: true }
+        })
+      });
+    } catch (refreshError) {
+      console.error('Error triggering dashboard refresh:', refreshError);
+    }
+
     return NextResponse.json({ success: true, event });
   } catch (error) {
     console.error('Webhook processing error:', error);
@@ -562,7 +576,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Handle OPTIONS request for CORS
-export async function OPTIONS(req: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { shopifyService } from '@/lib/shopify'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('Starting data ingestion...')
     

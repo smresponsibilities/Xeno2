@@ -71,6 +71,20 @@ async function handleCustomerUpdate(customer: any) {
   } catch (error) {
     console.error('Error processing customer update:', error);
   }
+  
+  // Trigger dashboard refresh
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/refresh-dashboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'customers/updated',
+        data: { customerId: customer.id }
+      })
+    });
+  } catch (refreshError) {
+    console.error('Error triggering dashboard refresh:', refreshError);
+  }
 }
 
 export async function POST(req: NextRequest) {

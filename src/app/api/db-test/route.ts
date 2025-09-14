@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabaseAdmin = getSupabaseAdmin()
     if (!supabaseAdmin) {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         console.log('Tables query error:', tablesError)
         
         // Last resort - try any simple query
-        const { data: simpleData, error: simpleError } = await supabaseAdmin
+        const { error: simpleError } = await supabaseAdmin
           .from('auth.users')
           .select('count')
           .limit(1)

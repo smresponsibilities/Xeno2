@@ -10,7 +10,6 @@ import TopCustomersList from '@/components/dashboard/TopCustomersList'
 import CustomerList from '@/components/dashboard/CustomerList'
 import TabbedCharts from '@/components/dashboard/TabbedCharts'
 import { 
-  TrendingUp, 
   ShoppingCart, 
   Users, 
   DollarSign,
@@ -141,7 +140,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false)
     }
-  }, [user, startDate, endDate])
+  }, [startDate, endDate])
 
   // Manual sync function
   const syncData = useCallback(async () => {
@@ -177,7 +176,7 @@ export default function Dashboard() {
     } finally {
       setIsSyncing(false)
     }
-  }, [user, fetchData])
+  }, [fetchData])
 
   // Initial data fetch
   useEffect(() => {
@@ -195,17 +194,57 @@ export default function Dashboard() {
     }
   }, [startDate, endDate, loading, fetchData])
 
-  // Auto-refresh data every 10 seconds to catch webhook updates quickly
+  // Webhook-based refresh system
   useEffect(() => {
-    const interval = setInterval(() => {
-      // For testing, always auto-refresh
-      if (!isSyncing) {
-        console.log('Auto-refreshing dashboard data...')
-        fetchData()
-      }
-    }, 10000) // Reduced from 30 seconds to 10 seconds
+    // Create a more intelligent refresh system
+    let refreshTimeout: NodeJS.Timeout | null = null
     
-    return () => clearInterval(interval)
+    const scheduleRefresh = () => {
+      // Clear any existing timeout
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout)
+      }
+      
+      // Schedule a refresh in 2 seconds (debounced)
+      refreshTimeout = setTimeout(() => {
+        if (!isSyncing) {
+          console.log('Webhook-triggered dashboard refresh...')
+          fetchData()
+        }
+      }, 2000)
+    }
+    
+    // Listen for webhook refresh events (using a simple polling approach for now)
+    // In a real implementation, you might use WebSockets or Server-Sent Events
+    const checkForRefresh = async () => {
+      try {
+        const response = await fetch('/api/refresh-dashboard', { 
+          method: 'GET',
+          cache: 'no-store'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          
+          // Use the hasRecentRefresh flag from the API
+          if (data.hasRecentRefresh) {
+            console.log('Recent webhook detected, scheduling dashboard refresh...')
+            scheduleRefresh()
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for refresh:', error)
+      }
+    }
+    
+    // Check for refresh events every 3 seconds
+    const refreshInterval = setInterval(checkForRefresh, 3000)
+    
+    return () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout)
+      }
+      clearInterval(refreshInterval)
+    }
   }, [isSyncing, fetchData])
 
   if (loading) {

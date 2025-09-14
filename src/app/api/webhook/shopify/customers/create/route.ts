@@ -35,7 +35,7 @@ async function handleCustomerCreate(customer: any) {
       console.error('Supabase admin client not available');
       return;
     }
-    const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
+    // const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
     // Get system user ID for webhook processing
     const { data: systemUser, error: userError } = await supabase

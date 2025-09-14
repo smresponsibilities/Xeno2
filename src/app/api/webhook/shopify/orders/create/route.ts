@@ -36,7 +36,7 @@ async function handleOrderCreate(order: any) {
       return;
     }
     
-    const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
+    // const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
     // Get system user ID for webhook processing
     const { data: systemUser, error: userError } = await supabase
@@ -76,9 +76,61 @@ async function handleOrderCreate(order: any) {
       console.error('Error saving order:', error);
     } else {
       console.log('Order saved to database successfully');
+      
+      // Update customer total_spent if customer exists
+      if (order.customer?.id) {
+        try {
+          // Get current customer data
+          const { data: currentCustomer } = await supabase
+            .from('shopify_customers')
+            .select('total_spent, orders_count')
+            .eq('user_id', systemUserId)
+            .eq('shopify_customer_id', order.customer.id)
+            .single();
+
+          if (currentCustomer) {
+            const customerData = currentCustomer as { total_spent: number | null; orders_count: number | null };
+            const newTotalSpent = (customerData.total_spent || 0) + parseFloat(order.total_price || '0');
+            const newOrdersCount = (customerData.orders_count || 0) + 1;
+
+            // Update customer total_spent and orders_count
+            await (supabase as any)
+              .from('shopify_customers')
+              .update({
+                total_spent: newTotalSpent,
+                orders_count: newOrdersCount,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', systemUserId)
+              .eq('shopify_customer_id', order.customer.id);
+
+            console.log('Updated customer total_spent:', {
+              customerId: order.customer.id,
+              newTotalSpent,
+              newOrdersCount
+            });
+          }
+        } catch (customerUpdateError) {
+          console.error('Error updating customer total_spent:', customerUpdateError);
+        }
+      }
     }
   } catch (error) {
     console.error('Error processing order creation:', error);
+  }
+  
+  // Trigger dashboard refresh
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/refresh-dashboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'orders/create',
+        data: { orderId: order.id, customerId: order.customer?.id }
+      })
+    });
+  } catch (refreshError) {
+    console.error('Error triggering dashboard refresh:', refreshError);
   }
 }
 

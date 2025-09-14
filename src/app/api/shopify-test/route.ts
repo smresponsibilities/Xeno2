@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { shopifyService } from '@/lib/shopify'
 
 export async function GET() {

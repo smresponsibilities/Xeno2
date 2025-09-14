@@ -65,9 +65,76 @@ async function handleOrderUpdate(order: any) {
       console.error('Error updating order:', error);
     } else {
       console.log('Order updated in database');
+      
+      // Update customer total_spent if order total changed and customer exists
+      if (order.customer?.id) {
+        try {
+          // Get the original order total from database
+          const { data: originalOrder } = await supabase
+            .from('shopify_orders')
+            .select('total_price')
+            .eq('user_id', systemUserId)
+            .eq('shopify_order_id', order.id)
+            .single();
+
+          if (originalOrder) {
+            const orderData = originalOrder as { total_price: string | null };
+            const originalTotal = parseFloat(orderData.total_price || '0');
+            const newTotal = parseFloat(order.total_price || '0');
+            const totalDifference = newTotal - originalTotal;
+
+            if (totalDifference !== 0) {
+              // Get current customer data
+              const { data: currentCustomer } = await supabase
+                .from('shopify_customers')
+                .select('total_spent')
+                .eq('user_id', systemUserId)
+                .eq('shopify_customer_id', order.customer.id)
+                .single();
+
+              if (currentCustomer) {
+                const customerData = currentCustomer as { total_spent: number | null };
+                const newCustomerTotal = (customerData.total_spent || 0) + totalDifference;
+
+                // Update customer total_spent
+                await (supabase as any)
+                  .from('shopify_customers')
+                  .update({
+                    total_spent: newCustomerTotal,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('user_id', systemUserId)
+                  .eq('shopify_customer_id', order.customer.id);
+
+                console.log('Updated customer total_spent due to order change:', {
+                  customerId: order.customer.id,
+                  totalDifference,
+                  newCustomerTotal
+                });
+              }
+            }
+          }
+        } catch (customerUpdateError) {
+          console.error('Error updating customer total_spent:', customerUpdateError);
+        }
+      }
     }
   } catch (error) {
     console.error('Error processing order update:', error);
+  }
+  
+  // Trigger dashboard refresh
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/refresh-dashboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'orders/updated',
+        data: { orderId: order.id, customerId: order.customer?.id }
+      })
+    });
+  } catch (refreshError) {
+    console.error('Error triggering dashboard refresh:', refreshError);
   }
 }
 
