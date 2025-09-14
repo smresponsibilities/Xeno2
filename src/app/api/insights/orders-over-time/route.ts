@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
       .eq('email', 'system@shopify-insights.local')
       .single()
 
+    const systemUserId = (systemUser as any)?.id
+
     const { searchParams } = new URL(request.url)
     const startDateQuery = searchParams.get('startDate')
     const endDateQuery = searchParams.get('endDate')
@@ -43,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { data: ordersData, error: dbError } = await supabaseAdmin
       .from('shopify_orders')
       .select('processed_at, total_price')
-      .eq('user_id', systemUser?.id)
+      .eq('user_id', systemUserId)
       .gte('processed_at', startDate)
       .lte('processed_at', endDate)
       .order('processed_at')

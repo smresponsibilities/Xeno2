@@ -16,11 +16,13 @@ export async function GET(request: NextRequest) {
       .eq('email', 'system@shopify-insights.local')
       .single()
 
+    const systemUserId = (systemUser as any)?.id
+
     // First try to get data from Supabase (cached/processed data) filtered by system user
     const { data: revenueData } = await supabaseAdmin
       .from('shopify_orders')
       .select('total_price')
-      .eq('user_id', systemUser?.id)
+      .eq('user_id', systemUserId)
 
     // If no data in Supabase, fetch directly from Shopify
     if (!revenueData || revenueData.length === 0) {
@@ -59,13 +61,13 @@ export async function GET(request: NextRequest) {
     const { count: totalOrders } = await supabaseAdmin
       .from('shopify_orders')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', systemUser?.id)
+      .eq('user_id', systemUserId)
 
     // Get total customers count filtered by system user
     const { count: totalCustomers } = await supabaseAdmin
       .from('shopify_customers')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', systemUser?.id)
+      .eq('user_id', systemUserId)
 
     // Calculate average order value
     const ordersCount = totalOrders || 0

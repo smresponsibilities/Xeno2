@@ -16,11 +16,13 @@ export async function GET(request: NextRequest) {
       .eq('email', 'system@shopify-insights.local')
       .single()
 
+    const systemUserId = (systemUser as any)?.id
+
     // First try to get data from Supabase filtered by system user
     const { data: topCustomers, error: dbError } = await supabaseAdmin
       .from('shopify_customers')
       .select('first_name, last_name, email, total_spent, orders_count')
-      .eq('user_id', systemUser?.id)
+      .eq('user_id', systemUserId)
       .order('total_spent', { ascending: false })
       .limit(5)
 
