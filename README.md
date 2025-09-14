@@ -509,6 +509,122 @@ For support and questions:
 3. Ensure Supabase database is properly configured
 4. Check Shopify API credentials and permissions
 
+## 🏗️ Architecture Overview
+
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        A[Next.js 15 App Router]
+        B[React 19 Components]
+        C[Tailwind CSS + Framer Motion]
+        D[Supabase Auth Context]
+    end
+    
+    subgraph "API Layer"
+        E[Next.js API Routes]
+        F[Webhook Handlers]
+        G[Data Ingestion APIs]
+        H[Analytics APIs]
+    end
+    
+    subgraph "External Services"
+        I[Shopify Admin API]
+        J[Shopify Webhooks]
+        K[Supabase Database]
+        L[Supabase Auth]
+    end
+    
+    subgraph "Data Flow"
+        M[Real-time Webhooks]
+        N[Batch Data Sync]
+        O[Analytics Processing]
+        P[Dashboard Rendering]
+    end
+    
+    A --> E
+    B --> A
+    C --> B
+    D --> A
+    
+    E --> F
+    E --> G
+    E --> H
+    
+    F --> J
+    G --> I
+    H --> K
+    
+    J --> M
+    I --> N
+    K --> O
+    O --> P
+    
+    M --> F
+    N --> G
+    O --> H
+    P --> A
+```
+
+### Data Flow Architecture
+
+```mermaid
+flowchart TD
+    subgraph "Shopify Store"
+        S1[Orders]
+        S2[Customers]
+        S3[Products]
+        S4[Webhook Events]
+    end
+    
+    subgraph "Application Layer"
+        A1[Webhook Receivers]
+        A2[Data Ingestion Service]
+        A3[Analytics Engine]
+        A4[Dashboard API]
+    end
+    
+    subgraph "Database Layer"
+        D1[Supabase PostgreSQL]
+        D2[Row Level Security]
+        D3[Materialized Views]
+        D4[Data Sync Logs]
+    end
+    
+    subgraph "Frontend Layer"
+        F1[Dashboard Components]
+        F2[Real-time Updates]
+        F3[Authentication]
+        F4[Data Visualization]
+    end
+    
+    S1 --> S4
+    S2 --> S4
+    S3 --> S4
+    
+    S4 --> A1
+    S1 --> A2
+    S2 --> A2
+    S3 --> A2
+    
+    A1 --> D1
+    A2 --> D1
+    A3 --> D1
+    
+    D1 --> A4
+    A4 --> F1
+    
+    D1 --> D2
+    D1 --> D3
+    A1 --> D4
+    A2 --> D4
+    
+    F1 --> F2
+    F1 --> F3
+    F1 --> F4
+```
+
 ## 🔄 Data Flow
 
 ### Initial Setup Flow
@@ -532,9 +648,189 @@ For support and questions:
 2. **API Fallback**: If no cached data exists, APIs fetch directly from Shopify
 3. **Cache Update**: Fresh data is stored in Supabase for future requests
 
+### Webhook Processing Flow
+
+```mermaid
+sequenceDiagram
+    participant S as Shopify Store
+    participant W as Webhook Endpoint
+    participant V as HMAC Verification
+    participant H as Handler Function
+    participant DB as Supabase Database
+    participant D as Dashboard
+    
+    S->>W: POST /api/webhook/shopify
+    Note over S,W: Order Created Event
+    
+    W->>V: Verify HMAC Signature
+    V-->>W: Signature Valid
+    
+    W->>H: Route to Order Handler
+    H->>DB: Insert/Update Order
+    H->>DB: Update Customer Metrics
+    H->>DB: Log Sync Event
+    
+    DB-->>H: Success Response
+    H-->>W: Processing Complete
+    
+    W->>D: Trigger Dashboard Refresh
+    Note over W,D: Server-Sent Events
+    
+    D->>DB: Fetch Updated Data
+    DB-->>D: Fresh Analytics Data
+    D->>D: Re-render Components
+```
+
+### Component Architecture
+
+```mermaid
+graph LR
+    subgraph "Dashboard Page"
+        DP[Dashboard Page]
+        SC[StatCard Components]
+        TC[TopCustomersList]
+        CL[CustomerList]
+        TBC[TabbedCharts]
+    end
+    
+    subgraph "API Layer"
+        KPI[/api/insights/kpis]
+        CUST[/api/insights/top-customers]
+        ORD[/api/insights/orders-over-time]
+        SYNC[/api/ingestion/start]
+    end
+    
+    subgraph "Data Services"
+        SS[ShopifyService]
+        SB[Supabase Client]
+        WH[Webhook Handlers]
+    end
+    
+    subgraph "External APIs"
+        SA[Shopify Admin API]
+        SW[Shopify Webhooks]
+    end
+    
+    DP --> SC
+    DP --> TC
+    DP --> CL
+    DP --> TBC
+    
+    SC --> KPI
+    TC --> CUST
+    CL --> CUST
+    TBC --> ORD
+    
+    KPI --> SB
+    KPI --> SS
+    CUST --> SB
+    ORD --> SB
+    SYNC --> SS
+    
+    SS --> SA
+    WH --> SW
+    WH --> SB
+```
+
+### Database Schema Architecture
+
+```mermaid
+erDiagram
+    PROFILES {
+        uuid id PK
+        text email
+        text shopify_store_url
+        text shopify_access_token
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    SHOPIFY_CUSTOMERS {
+        bigserial id PK
+        uuid user_id FK
+        bigint shopify_customer_id
+        text email
+        text first_name
+        text last_name
+        decimal total_spent
+        integer orders_count
+        timestamp created_at
+        timestamp updated_at
+        timestamp synced_at
+    }
+    
+    SHOPIFY_ORDERS {
+        bigserial id PK
+        uuid user_id FK
+        bigint shopify_order_id
+        bigint shopify_customer_id
+        text email
+        integer order_number
+        decimal total_price
+        decimal subtotal_price
+        decimal total_tax
+        text currency
+        text financial_status
+        text fulfillment_status
+        text order_status_url
+        timestamp processed_at
+        timestamp created_at
+        timestamp updated_at
+        timestamp synced_at
+    }
+    
+    SHOPIFY_PRODUCTS {
+        bigserial id PK
+        uuid user_id FK
+        bigint shopify_product_id
+        text title
+        text vendor
+        text product_type
+        text handle
+        text status
+        timestamp created_at
+        timestamp updated_at
+        timestamp synced_at
+    }
+    
+    DATA_SYNC_LOGS {
+        bigserial id PK
+        uuid user_id FK
+        text sync_type
+        text status
+        integer records_processed
+        text error_message
+        timestamp started_at
+        timestamp completed_at
+    }
+    
+    CUSTOMER_ANALYTICS {
+        uuid user_id FK
+        bigint shopify_customer_id
+        text email
+        text first_name
+        text last_name
+        decimal total_spent
+        integer orders_count
+        integer actual_orders_count
+        decimal actual_total_spent
+        timestamp first_order_date
+        timestamp last_order_date
+    }
+    
+    PROFILES ||--o{ SHOPIFY_CUSTOMERS : "owns"
+    PROFILES ||--o{ SHOPIFY_ORDERS : "owns"
+    PROFILES ||--o{ SHOPIFY_PRODUCTS : "owns"
+    PROFILES ||--o{ DATA_SYNC_LOGS : "owns"
+    SHOPIFY_CUSTOMERS ||--o{ SHOPIFY_ORDERS : "has orders"
+    SHOPIFY_CUSTOMERS ||--o{ CUSTOMER_ANALYTICS : "analyzed in"
+```
+
 ### Architecture Benefits
 - **Performance**: Fast dashboard loading with cached data
 - **Real-time**: Instant updates via webhooks
 - **Reliability**: API fallback ensures data availability
 - **Scalability**: Efficient data processing and storage
 - **Monitoring**: Complete audit trail of all data operations
+- **Security**: Row-level security and HMAC webhook verification
+- **Flexibility**: Modular component architecture with clear separation of concerns
