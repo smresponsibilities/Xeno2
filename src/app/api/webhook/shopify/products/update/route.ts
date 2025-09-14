@@ -37,14 +37,32 @@ async function handleProductUpdate(product: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('products')
+      .from('shopify_products')
       .update({
         title: product.title || '',
         vendor: product.vendor || '',
+        product_type: product.product_type || '',
+        handle: product.handle || '',
+        status: product.status || 'active',
         updated_at: product.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', product.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_product_id', product.id);
 
     if (error) {
       console.error('Error updating product:', error);
@@ -81,3 +99,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

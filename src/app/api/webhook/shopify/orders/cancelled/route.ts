@@ -34,13 +34,29 @@ async function handleOrderCancelled(order: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('orders')
+      .from('shopify_orders')
       .update({
+        financial_status: 'cancelled',
         fulfillment_status: 'cancelled',
         updated_at: order.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', order.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_order_id', order.id);
 
     if (error) {
       console.error('Error updating order cancellation:', error);
@@ -77,3 +93,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

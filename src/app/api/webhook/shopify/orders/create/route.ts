@@ -38,15 +38,36 @@ async function handleOrderCreate(order: any) {
     
     const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('orders')
+      .from('shopify_orders')
       .insert({
-        shopify_id: order.id.toString(),
+        user_id: systemUserId,
+        shopify_order_id: order.id,
+        shopify_customer_id: order.customer?.id || null,
+        email: order.customer?.email || order.email || null,
+        order_number: order.order_number || parseInt(order.name?.replace('#', '') || '0'),
         total_price: parseFloat(order.total_price) || 0,
+        subtotal_price: parseFloat(order.subtotal_price) || parseFloat(order.total_price) || 0,
+        total_tax: parseFloat(order.total_tax) || 0,
+        currency: order.currency || 'USD',
+        financial_status: order.financial_status || 'unknown',
         fulfillment_status: order.fulfillment_status || 'unfulfilled',
+        order_status_url: order.order_status_url || null,
         processed_at: order.processed_at || new Date().toISOString(),
-        customer_id: order.customer?.id?.toString() || '',
-        store_id: storeId,
         created_at: order.created_at || new Date().toISOString(),
         updated_at: order.updated_at || new Date().toISOString()
       });
@@ -86,3 +107,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

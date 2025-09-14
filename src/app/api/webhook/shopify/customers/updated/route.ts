@@ -36,8 +36,22 @@ async function handleCustomerUpdate(customer: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('customers')
+      .from('shopify_customers')
       .update({
         email: customer.email || null,
         first_name: customer.first_name || null,
@@ -46,7 +60,8 @@ async function handleCustomerUpdate(customer: any) {
         orders_count: customer.orders_count || 0,
         updated_at: customer.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', customer.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_customer_id', customer.id);
 
     if (error) {
       console.error('Error updating customer:', error);
@@ -83,3 +98,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

@@ -37,16 +37,30 @@ async function handleCustomerCreate(customer: any) {
     }
     const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('customers')
+      .from('shopify_customers')
       .insert({
-        shopify_id: customer.id.toString(),
+        user_id: systemUserId,
+        shopify_customer_id: customer.id,
         email: customer.email || null,
         first_name: customer.first_name || null,
         last_name: customer.last_name || null,
         total_spent: parseFloat(customer.total_spent) || 0,
         orders_count: customer.orders_count || 0,
-        store_id: storeId,
         created_at: customer.created_at || new Date().toISOString(),
         updated_at: customer.updated_at || new Date().toISOString()
       });
@@ -86,3 +100,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

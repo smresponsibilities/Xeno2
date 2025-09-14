@@ -40,15 +40,36 @@ async function handleOrderCreate(order: any) {
     // Get store_id from the webhook (you might need to extract this from the webhook URL or headers)
     const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('orders')
+      .from('shopify_orders')
       .insert({
-        shopify_id: order.id.toString(),
+        user_id: systemUserId,
+        shopify_order_id: order.id,
+        shopify_customer_id: order.customer?.id || null,
+        email: order.customer?.email || order.email || null,
+        order_number: order.order_number || parseInt(order.name?.replace('#', '') || '0'),
         total_price: parseFloat(order.total_price) || 0,
+        subtotal_price: parseFloat(order.subtotal_price) || parseFloat(order.total_price) || 0,
+        total_tax: parseFloat(order.total_tax) || 0,
+        currency: order.currency || 'USD',
+        financial_status: order.financial_status || 'unknown',
         fulfillment_status: order.fulfillment_status || 'unfulfilled',
+        order_status_url: order.order_status_url || null,
         processed_at: order.processed_at || new Date().toISOString(),
-        customer_id: order.customer?.id?.toString() || '',
-        store_id: storeId,
         created_at: order.created_at || new Date().toISOString(),
         updated_at: order.updated_at || new Date().toISOString()
       });
@@ -79,13 +100,28 @@ async function handleOrderFulfilled(order: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('orders')
+      .from('shopify_orders')
       .update({
         fulfillment_status: order.fulfillment_status || 'fulfilled',
         updated_at: order.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', order.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_order_id', order.id);
 
     if (error) {
       console.error('Error updating order fulfillment:', error);
@@ -113,13 +149,28 @@ async function handleOrderCancelled(order: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+    
     const { error } = await (supabase as any)
-      .from('orders')
+      .from('shopify_orders')
       .update({
         fulfillment_status: 'cancelled',
         updated_at: order.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', order.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_order_id', order.id);
 
     if (error) {
       console.error('Error updating order cancellation:', error);
@@ -147,14 +198,29 @@ async function handleOrderUpdate(order: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+    
     const { error } = await (supabase as any)
-      .from('orders')
+      .from('shopify_orders')
       .update({
         total_price: parseFloat(order.total_price) || 0,
         fulfillment_status: order.fulfillment_status || 'unfulfilled',
         updated_at: order.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', order.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_order_id', order.id);
 
     if (error) {
       console.error('Error updating order:', error);
@@ -186,16 +252,30 @@ async function handleCustomerCreate(customer: any) {
     }
     const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('customers')
+      .from('shopify_customers')
       .insert({
-        shopify_id: customer.id.toString(),
+        user_id: systemUserId,
+        shopify_customer_id: customer.id,
         email: customer.email || null,
         first_name: customer.first_name || null,
         last_name: customer.last_name || null,
         total_spent: parseFloat(customer.total_spent) || 0,
         orders_count: customer.orders_count || 0,
-        store_id: storeId,
         created_at: customer.created_at || new Date().toISOString(),
         updated_at: customer.updated_at || new Date().toISOString()
       });
@@ -228,8 +308,22 @@ async function handleCustomerUpdate(customer: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+    
     const { error } = await (supabase as any)
-      .from('customers')
+      .from('shopify_customers')
       .update({
         email: customer.email || null,
         first_name: customer.first_name || null,
@@ -238,7 +332,8 @@ async function handleCustomerUpdate(customer: any) {
         orders_count: customer.orders_count || 0,
         updated_at: customer.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', customer.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_customer_id', customer.id);
 
     if (error) {
       console.error('Error updating customer:', error);
@@ -271,13 +366,30 @@ async function handleProductCreate(product: any) {
     }
     const storeId = process.env.SHOPIFY_STORE_ID || 'default-store';
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+
     const { error } = await (supabase as any)
-      .from('products')
+      .from('shopify_products')
       .insert({
-        shopify_id: product.id.toString(),
+        user_id: systemUserId,
+        shopify_product_id: product.id,
         title: product.title || '',
         vendor: product.vendor || '',
-        store_id: storeId,
+        product_type: product.product_type || '',
+        handle: product.handle || '',
+        status: product.status || 'active',
         created_at: product.created_at || new Date().toISOString(),
         updated_at: product.updated_at || new Date().toISOString()
       });
@@ -311,14 +423,29 @@ async function handleProductUpdate(product: any) {
       return;
     }
     
+    // Get system user ID for webhook processing
+    const { data: systemUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', 'system@shopify-insights.local')
+      .single();
+
+    if (userError || !systemUser) {
+      console.error('System user not found for webhook processing:', userError);
+      return;
+    }
+
+    const systemUserId = (systemUser as any).id;
+    
     const { error } = await (supabase as any)
-      .from('products')
+      .from('shopify_products')
       .update({
         title: product.title || '',
         vendor: product.vendor || '',
         updated_at: product.updated_at || new Date().toISOString()
       })
-      .eq('shopify_id', product.id.toString());
+      .eq('user_id', systemUserId)
+      .eq('shopify_product_id', product.id);
 
     if (error) {
       console.error('Error updating product:', error);
