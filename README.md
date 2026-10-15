@@ -1,5 +1,7 @@
 # Shopify Insights — E-Commerce Analytics & CRM Dashboard
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Vercel-3b82f6?style=for-the-badge&logo=vercel&logoColor=white)](https://xeno2-df3z.vercel.app)
+[![Architecture Showcase](https://img.shields.io/badge/Architecture-shivammahajan.com-ff5d01?style=for-the-badge)](https://shivammahajan.com/projects/)
 [![Next.js](https://img.shields.io/badge/Framework-Next.js%2015-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
 [![Supabase](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
@@ -9,7 +11,8 @@
 
 A modern, high-performance e-commerce analytics and customer relationship intelligence dashboard. Synchronizes order streams and customer cohorts from Shopify stores into **Supabase PostgreSQL** to compute Customer Lifetime Value (LTV), repeat purchase frequency, average order value (AOV), and retention decay curves.
 
-Project Showcase: [Shopify Insights on Shivam Mahajan Portfolio](https://shivammahajan.com/projects/)
+* **Live Demo:** **[https://xeno2-df3z.vercel.app](https://xeno2-df3z.vercel.app)**
+* **Portfolio Showcase:** **[https://shivammahajan.com/projects/](https://shivammahajan.com/projects/)**
 
 ---
 
